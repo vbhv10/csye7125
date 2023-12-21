@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ tpl .Values.webappData.configMapName . }}
+  namespace: {{ .Values.webappData.namespace }}
+data:
+  DB_HOST: {{ tpl .Values.webappData.dbHost . }}
+  DB_PORT: {{ .Values.webappData.dbPort | quote}}
+  DB_NAME: {{ .Values.webappData.dbName }}
+  DB_USER: {{ .Values.webappData.dbUser }}
+  DB_SCHEMA: {{ .Values.webappData.dbSchema }}
+  OPERATOR_NAMESPACE: {{ .Values.webappData.operatorNamespace }}
+  HEALTH_CHECK_NAME: {{ .Values.webappData.healthCheckName }}
+  SECRET_NAME: {{ tpl .Values.webappData.secretName . }}
+  DB_NAMESPACE: {{ .Values.webappData.postgresNamespace }}
+  DEST_NAMESPACE: {{ .Values.webappData.namespace }}

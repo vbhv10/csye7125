@@ -1,0 +1,22 @@
+# Bitnami DB for webapp
+webappdb:
+  auth:
+    database: app
+    enablePostgresUser: true
+
+  primary:
+    persistence:
+      storageClass: standard
+      size: 1Gi
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Delete
+
+webappData:
+  name: webappdb
+  serviceAccount:
+    name: webapp-sa
+    role: webapp-role
+    roleBinding: webapp-role-binding
+  networkPolicyName: webapp-postgres-access
+  namespace: webapp
+  label: webapp

@@ -1,0 +1,60 @@
+name: Helm Template Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  kafka-helm-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: kafka-helm-check
+        uses: igabaydulin/helm-check-action@0.1.4
+        env:
+          CHART_LOCATION: ./kafka
+          CHART_VALUES: ./kafka/values.yaml
+  webapp-db-helm-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: webapp-db-helm-check
+        uses: igabaydulin/helm-check-action@0.1.4
+        env:
+          CHART_LOCATION: ./webapp-postgres
+          CHART_VALUES: ./webapp-postgres/values.yaml
+  consumer-db-helm-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: consumer-db-helm-check
+        uses: igabaydulin/helm-check-action@0.1.4
+        env:
+          CHART_LOCATION: ./consumer-postgres
+          CHART_VALUES: ./consumer-postgres/values.yaml
+  istio-system-helm-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: istio-system-helm-check
+        uses: igabaydulin/helm-check-action@0.1.4
+        env:
+          CHART_LOCATION: ./istio-system
+          CHART_VALUES: ./istio-system/values.yaml
+  istio-ingress-helm-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: istio-system-helm-check
+        uses: igabaydulin/helm-check-action@0.1.4
+        env:
+          CHART_LOCATION: ./istio-ingress
+          CHART_VALUES: ./istio-ingress/values.yaml
+  dashboard-helm-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: dashboard-helm-check
+        uses: igabaydulin/helm-check-action@0.1.4
+        env:
+          CHART_LOCATION: ./dashboard
+          CHART_VALUES: ./dashboard/values.yaml

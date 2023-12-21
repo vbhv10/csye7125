@@ -1,0 +1,43 @@
+# values.yaml for Kafka Consumer with PostgreSQL
+
+kafkadb:
+  # Authentication configuration for PostgreSQL
+  auth:
+    database: kafka
+    enablePostgresUser: true
+
+  primary:
+    # Persistence configuration for the PostgreSQL database
+    persistence:
+      storageClass: standard
+      size: 1Gi
+    
+    # Define the policy for persistent volume claim retention
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Delete
+
+    # Initialization scripts for the PostgreSQL database
+    initdb:
+      scripts:
+        # Initialize the consumer table
+        init.sql: |
+          CREATE TABLE IF NOT EXISTS consumer (
+              start_time TIMESTAMP,
+              end_time TIMESTAMP,
+              content JSON,
+              status_code INTEGER,
+              content_length INTEGER,
+              url TEXT
+          );
+        
+kafkaData:
+  name: kafkadb
+  serviceAccount:
+    name: consumer-sa
+    role: consumer-role
+    roleBinding: consumer-role-binding
+  namespace: consumer
+  networkPolicyName: consumer-postgres-access
+  label: consumer
+
+

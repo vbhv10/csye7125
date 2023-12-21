@@ -1,0 +1,18 @@
+version: '3'
+services:
+  jenkins:
+    container_name: jenkins
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DOCKER_COMPOSE=1  
+    env_file:
+      - .docker.env
+    volumes:
+      # - /usr/bin/docker:/usr/bin/docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    user: root
+    ports:
+      - "8080:8080"

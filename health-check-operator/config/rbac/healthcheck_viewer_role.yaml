@@ -1,0 +1,28 @@
+# permissions for end users to view healthchecks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: role
+    app.kubernetes.io/instance: healthcheck-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: health-check-operator
+    app.kubernetes.io/part-of: health-check-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: healthcheck-viewer-role
+  namespace: health-check-operator-system
+rules:
+- apiGroups:
+  - webapp.vaibhavmahajan.in
+  resources:
+  - healthchecks
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - webapp.vaibhavmahajan.in
+  resources:
+  - healthchecks/status
+  verbs:
+  - get

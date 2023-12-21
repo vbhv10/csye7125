@@ -1,0 +1,12 @@
+gateway:
+  service:
+    ports:
+      - name: http1
+        port: 80
+        protocol: TCP
+        targetPort: 8000
+      - name: http2
+        port: 20001
+        protocol: TCP
+        targetPort: 20001
+    loadBalancerIP: 35.237.23.33

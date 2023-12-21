@@ -1,0 +1,80 @@
+jenkins:
+  systemMessage: "Automating Jenkins Setup using Docker and Jenkins Configuration as Code"
+
+  remotingSecurity:
+    enabled: true
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+
+  authorizationStrategy:
+    globalMatrix:
+      permissions:
+        - "Overall/Administer:admin"
+        - "Overall/Read:authenticated"
+  globalNodeProperties:
+  - envVars:
+      env:
+      - key: "googleApplicationCredentials"
+        value: "${GOOGLE_CREDENTIALS}"
+      - key: "clusterName"
+        value: "${CLUSTER_NAME}"
+      - key: "quaySecret"
+        value: "${QUAY_SECRET}"
+      - key: "performHealthCheckImage"
+        value: "${PERFORM_HEALTH_CHECK_IMAGE}"
+      - key: "kafkaTopic"
+        value: "${KAFKA_TOPIC}"
+      - key: "operatorNamespace"
+        value: "${OPERATOR_NAMESPACE}"
+      - key: "kafkaNamespace"
+        value: "${KAFKA_NAMESPACE}"
+      - key: "loadbalancerIP"
+        value: "${LOAD_BALANCER_IP}"
+      - key: "gatewayHost"
+        value: "${GATEWAY_HOST}"
+
+security:
+  gitHostKeyVerificationConfiguration:
+    sshHostKeyVerificationStrategy: "noHostKeyVerificationStrategy"
+
+  queueItemAuthenticator:
+    authenticators:
+      - global:
+          strategy: triggeringUsersAuthorizationStrategy
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamepassword:
+              scope: GLOBAL
+              id: "docker-registry-credentials"
+              username: "${QUAY_ADMIN_ID}"
+              password: "${QUAY_PASSWORD}"
+              description: "Docker quay creds"
+          - usernamepassword:
+              scope: GLOBAL
+              id: "token-github"
+              username: "${USERNAME}"
+              password: "${GH_TOKEN}"
+              description: "Github token"
+          
+unclassified:
+  location:
+    url: "http://127.0.0.1:8080/"
+
+jobs:
+  - file: "/usr/local/webapp.groovy"
+  - file: "/usr/local/webapp-db.groovy"
+  - file: "/usr/local/webapp-helm-chart.groovy"
+  - file: "/usr/local/helm-dependencies.groovy"
+  - file: "/usr/local/health-check-results.groovy"
+  - file: "/usr/local/perform-health-check.groovy"
+  - file: "/usr/local/health-check-operator.groovy"
+
+

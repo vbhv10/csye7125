@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ .Values.webappData.limitRangeName }}
+  namespace: {{ .Values.webappData.namespace }}
+spec:
+  limits:
+    - default:
+        memory: {{ .Values.limitRange.limits.default.memory }}
+        cpu: {{ .Values.limitRange.limits.default.cpu }}
+      defaultRequest:
+        memory: {{ .Values.limitRange.limits.defaultRequest.memory }}
+        cpu: {{ .Values.limitRange.limits.defaultRequest.cpu }}
+      type: {{ .Values.limitRange.limits.type }}

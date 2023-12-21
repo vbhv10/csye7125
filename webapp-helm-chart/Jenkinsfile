@@ -1,0 +1,92 @@
+import groovy.json.JsonSlurperClassic
+
+pipeline {
+    agent any
+//     Needed for cleaning up before build
+    options{
+        skipDefaultCheckout(true)
+    }
+    environment {
+        // Define your environment variables here, if needed
+        CHART_NAME = 'helm-webapp'
+        GITHUB_TOKEN = credentials('token-github')
+    }
+    stages {
+        stage('Checkout'){
+            steps {
+            //  Clean workspace so the clone is a fresh one
+                cleanWs()
+                checkout scm
+            }
+        }
+        stage('Build Chart') {
+            steps {
+                // Use semantic-release to determine the chart version
+                script {
+
+                    // checkout to main branch
+                    sh "git checkout main"
+
+                    // get the version to create in lates push
+                    env.CHART_VERSION = sh(script: 'semantic-release version --no-commit --no-changelog --no-push --no-vcs-release --skip-build --print', returnStdout: true).trim()
+                    echo "New chart version: ${CHART_VERSION}"
+
+                    // Update the version in Chart.yml
+                    sh "awk '/version:/ && !f { sub(/version:[[:space:]]*[^[:space:]]*/, \"version: ${CHART_VERSION}\"); f=1 } 1' ${CHART_NAME}/Chart.yaml > tmpfile && mv tmpfile ${CHART_NAME}/Chart.yaml"
+                }
+
+                // Create a zip file
+                script{
+                    env.CHART_TGZ = "${CHART_NAME}-${CHART_VERSION}.tgz"
+                    echo "Chart TGZ: ${CHART_TGZ}"
+
+                    // Zip chart
+                    // sh "zip -r ${CHART_ZIP} ${CHART_NAME}"
+                    sh "helm package ${CHART_NAME}"
+                }
+            }
+        }
+        stage('Github-Release'){
+            steps{
+                script {
+                    // Get latest tag from the repository
+                    def releaseCheck = sh(
+                        script: "git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo '0.0.0'",
+                        returnStdout: true).trim()
+
+                    // Check if the release already existor create new one
+                    if (releaseCheck == "v${CHART_VERSION}") {
+                        echo "Release v${CHART_VERSION} already exists. Skipping release creation."
+                    } else {
+                        sh "gh release create v${CHART_VERSION} ${CHART_TGZ}"
+                        echo "Release v${CHART_VERSION} created."
+                    }
+                }
+            }
+        }
+        stage('Helm deploy'){
+            steps{
+                script {
+                    def data = readJSON text: "${googleApplicationCredentials}"
+                    def jsonContent = groovy.json.JsonOutput.toJson(data)
+
+                    writeFile file: "creds.json", text: "${jsonContent}"
+                    env.GOOGLE_CREDENTIALS = "creds.json"
+                    env.GATEWAY_HOST = "${gatewayHost}"
+
+                    // Authenticate with gcloud using service account credentials
+                    sh "gcloud auth login --cred-file=creds.json"
+
+                    // Set the project
+                    sh "gcloud config set project ${data.project_id}"
+
+                    // Get credentials for the GKE cluster
+                    sh "gcloud container clusters get-credentials ${clusterName} --region=us-east1"
+
+                    // Install the charts
+                    sh "make deploy"
+                }
+            }
+        }
+    }
+}

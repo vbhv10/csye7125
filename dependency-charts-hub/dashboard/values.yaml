@@ -1,0 +1,100 @@
+kiali-server:
+  fullnameOverride: "kiali"
+  nameOverride: kiali
+  auth:
+    strategy: anonymous
+  deployment:
+    pod_labels:
+      sidecar.istio.io/inject: "false"
+    accessible_namespaces:
+    - '**'
+    ingress_enabled: false
+    hpa:
+      api_version: autoscaling/v2beta2
+    image_version: v1.76
+  # login_token:
+  #   signing_key: amFpc2hyZWVyYW14amVzdXM=
+  kiali_feature_flags:
+    clustering:
+      autodetect_secrets:
+        enabled: false
+        label: "kiali.io/multiCluster=true"
+      clusters: []
+
+prometheus:
+  # To simplify the deployment, disable non-essential components
+  alertmanager:
+    enabled: false
+  prometheus-pushgateway:
+    enabled: false
+  kube-state-metrics:
+    enabled: false
+  prometheus-node-exporter:
+    enabled: false
+  server:
+    podLabels:
+      sidecar.istio.io/inject: "false"
+    persistentVolume:
+      enabled: false
+    # Use port 9090 to match Istio documentation
+    service:
+      servicePort: 9090
+    readinessProbeInitialDelay: 0
+    # Speed up scraping a bit from the default
+    global:
+      scrape_interval: 15s
+
+    # Match legacy addon deployment
+    fullnameOverride: prometheus
+
+    # use dockerhub
+    image:
+      repository: prom/prometheus
+
+    securityContext: null
+
+  configmapReload:
+    prometheus:
+      image:
+        # Use ghcr
+        repository: ghcr.io/prometheus-operator/prometheus-config-reloader
+
+loki:
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    storage:
+      type: 'filesystem'
+  test:
+    enabled: false
+  monitoring:
+    dashboards:
+      enabled: false
+    rules:
+      enabled: false
+      alerting: false
+    serviceMonitor:
+      enabled: false
+      metricsInstance:
+        enabled: false
+    selfMonitoring:
+      enabled: false
+      grafanaAgent:
+        installOperator: false
+        enableConfigReadAPI: false
+    lokiCanary:
+      enabled: false
+  singleBinary:
+    replicas: 1
+  gateway:
+    enabled: false
+
+istio:
+  virtualService:
+    name: kiali-virtual-service
+    portNumber: 20001
+  webappHost: webapp.vaibhavmahajan.in
+  gatewayNamespace: istio-system
+  gatewayName: istio-gateway
+  serviceName: kiali

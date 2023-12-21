@@ -1,0 +1,52 @@
+# Kafka configurations
+kafka:
+  listeners:
+    client:
+      protocol: PLAINTEXT
+    controller:
+      protocol: PLAINTEXT
+  provisioning:
+    enabled: true
+    replicationFactor: 3
+    numPartitions: 3
+    podAnnotations:
+      proxy.istio.io/config: '{ "holdApplicationUntilProxyStarts": true }'
+    postScript: "curl --max-time 2 -s -f -XPOST http://127.0.0.1:15000/quitquitquit"
+    topics:
+      - name: healthcheck
+  controller:
+    persistence:
+      size: 1
+    initContainerResources:
+      requests:
+        memory: "50Mi"
+        cpu: "50m"
+      limits:
+        memory: "100Mi"
+        cpu: "100m"
+    resources:
+      requests:
+        memory: "500Mi"
+        cpu: "100m"
+      limits:
+        memory: "850Mi"
+        cpu: 1
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: kafka
+            topologyKey: "kubernetes.io/hostname"
+
+kafkaRoleName: pod-read-role
+kafkaRoleBindingName: pod-read-role-binding
+consumer:
+  serviceAccountName: consumer-sa
+  namespace: consumer
+
+operator:
+  serviceAccountName: health-check-operator-controller-manager
+  namespace: health-check-operator-system

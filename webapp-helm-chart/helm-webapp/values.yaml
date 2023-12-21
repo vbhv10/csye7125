@@ -1,0 +1,234 @@
+# Default values for helm-webapp.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# imagePullSecrets: []
+# nameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "api-access"
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+  protocol: TCP
+  portName: tcp
+
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  requests:
+    memory: "450Mi"
+    cpu: "300m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+# Limit Range
+limitRange:
+  limits:
+      default:
+        memory: 512Mi
+        cpu: 500m
+      defaultRequest:
+        memory: 256Mi
+        cpu: 350m
+      type: Container
+
+# HPA
+hpa:
+  webappName: webapp-hpa
+  consumerName: consumer-hpa
+  webappNamespace: webapp
+  consumerNamespace: consumer
+  maxReplicas: 5
+  minReplicas: 3
+  averageCPUUtilization: 5
+  scaleUp:
+    periodSeconds: 15
+    stabilizationWindowSeconds: 0
+    podValue: 1
+  scaleDown:
+    periodSeconds: 15
+    stabilizationWindowSeconds: 30
+    podValue: 1
+
+#Affinity
+affinity:
+  webappName: webapp-affinity
+  consumerName: consumer-affinity
+
+# Quay secret for org
+secret:
+  type: kubernetes.io/dockerconfigjson
+  data:
+    dockerconfigjson: ewogICJhdXRocyI6IHsKICAgICJxdWF5LmlvIjogewogICAgICAiYXV0aCI6ICJiVzkxYTNSb2FXdGhPVGM2UzBaaVNuTTVZMGw1V25adWNtbElkWEo1Y1hOUlIyZGpaM295VTA5SWFtRlRTV1kwWjBsYVJ6WkhTekEzU3k4MWNGUk5jWGhWUVN0TU5WWjBRWGQwZUE9PSIsCiAgICAgICJlbWFpbCI6ICIiCiAgICB9CiAgfQp9
+
+replicaCount: 3
+
+initContainer:
+  image: quay.io/csye7125advcloud/webapp-db:latest
+  command: ["flyway", "migrate"]
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "300m"
+    limits:
+      memory: "512Mi"
+      cpu: "400m"
+      
+webapp:
+  image:
+    repository: quay.io/csye7125advcloud/webapp:latest
+  port: 8000
+  resources:
+    requests:
+      memory: "300Mi"
+      cpu: "200m"
+    limits:
+      memory: "700Mi"
+      cpu: "500m"
+  readiness:
+    probePath: /healthz
+  liveness:
+    probePath: /
+
+
+probeReadinessInitialDelay: 60
+probeLivenessInitialDelay: 60
+probePeriod: 15
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+     maxUnavailable: 1
+     maxSurge: 1
+minReadySeconds: 30
+progressDeadlineSeconds: 300
+imagePullSecret:
+  name: quay-secret
+
+initCheckDbConnection:
+  image: postgres:14
+  resources:
+    requests:
+      memory: "200Mi"
+      cpu: "100m"
+    limits:
+      memory: "250Mi"
+      cpu: "200m"
+
+initPostgresPassword:
+  image: bitnami/kubectl
+  resources:
+    requests:
+      memory: "200Mi"
+      cpu: "100m"
+    limits:
+      memory: "250Mi"
+      cpu: "200m"
+
+#Postgres conf for webapp
+webappData:
+  name: webappdb
+  dbPort: 5432
+  dbName: app
+  dbUser: postgres
+  dbSchema: app
+  healthCheckName: healthchecks.webapp.vaibhavmahajan.in
+  operatorNamespace: health-check-operator-system
+  namespace: webapp
+  serviceAccountName: webapp-sa
+  postgresReleaseName: webapp-postgres
+  limitRangeName: webapp-limit-range
+  networkPolicyName: webapp-postgres-access
+  postgresNamespace: postgres
+  serviceName: webapp-service
+  deploymentName: "{{ .Release.Name }}-webapp"
+  configMapName: "{{ .Release.Name }}-{{ .Values.webappData.name }}-config"
+  dbHost: "{{ .Values.webappData.postgresReleaseName }}-{{ .Values.webappData.name }}.{{ .Values.webappData.postgresNamespace }}.svc.cluster.local"
+  secretName: "{{ .Values.webappData.postgresReleaseName }}-{{ .Values.webappData.name }}"
+  imagePullSecretName: "{{ .Release.Name }}-secret"
+  role: webapp-role
+  roleBinding: webapp-role-binding
+
+# Postgres conf for Kafka Consumer
+kafkaData:
+  name: kafkadb
+  dbPort: 5432
+  dbName: kafka
+  dbUser: postgres
+  dbTable: consumer
+  kafkaTopic: healthcheck
+  namespace: consumer
+  serviceAccountName: consumer-sa
+  postgresReleaseName: consumer-postgres
+  kafkaNamespace: kafka
+  limitRangeName: consumer-limit-range
+  networkPolicyName: consumer-postgres-access
+  postgresNamespace: postgres
+  dbHost: "{{ .Values.kafkaData.postgresReleaseName }}-{{ .Values.kafkaData.name }}.{{ .Values.kafkaData.postgresNamespace }}.svc.cluster.local"
+  configMapName: "{{ .Release.Name }}-{{ .Values.kafkaData.name }}-config"
+  secretName: "{{ .Values.kafkaData.postgresReleaseName }}-{{ .Values.kafkaData.name }}"
+  deploymentName: "{{ .Release.Name }}-consumer"
+  imagePullSecretName: "{{ .Release.Name }}-secret"
+  role: consumer-role
+  roleBinding: consumer-role-binding
+
+consumer:
+  image: quay.io/csye7125advcloud/health-check-results:latest
+  resources:
+    requests:
+      memory: "200Mi"
+      cpu: "100m"
+    limits:
+      memory: "250Mi"
+      cpu: "200m"
+
+istio:
+  gatewayName: istio-gateway
+  gatewayNamespace: istio-system
+  virtualService:
+    name: webapp-virtual-service
+    portNumber: 8000
+  webappHost: ""
+
+
+

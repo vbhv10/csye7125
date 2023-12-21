@@ -1,0 +1,25 @@
+resources:
+- manager.yaml
+
+patches:
+- patch: |-
+    - op: add
+      path: /spec/template/spec/imagePullSecrets
+      value: [{ name: quay-secret }]
+  target:
+    kind: Deployment
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/envFrom
+      value:
+        - configMapRef:
+            name: configmap
+  target:
+    kind: Deployment
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: controller
+  newName: quay.io/csye7125advcloud/health-check-operator
+  newTag: latest

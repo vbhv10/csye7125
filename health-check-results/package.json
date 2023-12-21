@@ -1,0 +1,17 @@
+{
+  "name": "health-check-results",
+  "version": "1.0.0",
+  "description": "",
+  "main": "consumer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "kafka-node": "^5.0.0",
+    "kafkajs": "^2.2.4",
+    "pg": "^8.11.3"
+  }
+}

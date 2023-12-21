@@ -1,0 +1,13 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+    name: {{ .Values.kafkaData.roleBinding }}
+    namespace: {{ .Values.kafkaData.namespace }}
+subjects:
+    - kind: ServiceAccount
+      name: {{ .Values.kafkaData.serviceAccountName }}
+      namespace: {{ .Values.kafkaData.namespace }}
+roleRef:
+    kind: Role
+    name: {{ .Values.kafkaData.role }}
+    apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ tpl .Values.webappData.deploymentName . }}
+  namespace: {{ .Values.webappData.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ tpl .Values.webappData.deploymentName . }}
+    app.kubernetes.io/affinity: {{ .Values.affinity.webappName }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ tpl .Values.webappData.deploymentName . }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ tpl .Values.webappData.deploymentName . }}
+        app.kubernetes.io/affinity: {{ .Values.affinity.webappName }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/affinity: {{ .Values.affinity.webappName }}
+            topologyKey: "kubernetes.io/hostname"
+      serviceAccountName: {{ .Values.webappData.serviceAccountName }}
+      initContainers:
+        - name: postgres-password
+          image: {{ .Values.initPostgresPassword.image }}
+          resources:
+            requests:
+              memory: {{ .Values.initPostgresPassword.resources.requests.memory }}
+              cpu: {{ .Values.initPostgresPassword.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.initPostgresPassword.resources.limits.memory }}
+              cpu: {{ .Values.initPostgresPassword.resources.limits.cpu }}
+          envFrom:
+            - configMapRef:
+                name: {{ tpl .Values.webappData.configMapName . }}
+          command: ['/bin/sh', '-c', 'kubectl delete secret $SECRET_NAME -n $DEST_NAMESPACE --ignore-not-found && kubectl get secrets $SECRET_NAME -n $DB_NAMESPACE -o yaml | sed s/"namespace: $DB_NAMESPACE"/"namespace: $DEST_NAMESPACE"/ | kubectl apply -n $DEST_NAMESPACE -f -']
+
+        - name: check-db-ready
+          image: {{ .Values.initCheckDbConnection.image }}
+          resources:
+            requests:
+              memory: {{ .Values.initCheckDbConnection.resources.requests.memory }}
+              cpu: {{ .Values.initCheckDbConnection.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.initCheckDbConnection.resources.limits.memory }}
+              cpu: {{ .Values.initCheckDbConnection.resources.limits.cpu }}
+          envFrom:
+            - configMapRef:
+                name: {{ tpl .Values.webappData.configMapName . }}
+          command: ['sh', '-c', 
+            'until pg_isready -h $DB_HOST -p $DB_PORT; 
+            do echo waiting for database; sleep 2; done;']
+
+
+        - name: init-webapp-db
+          image: {{ .Values.initContainer.image }}
+          resources:
+            requests:
+              memory: {{ .Values.initContainer.resources.requests.memory }}
+              cpu: {{ .Values.initContainer.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.initContainer.resources.limits.memory }}
+              cpu: {{ .Values.initContainer.resources.limits.cpu }}
+          envFrom:
+            - configMapRef:
+                name: {{ tpl .Values.webappData.configMapName . }}
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                    name: {{ tpl .Values.webappData.secretName . }}
+                    key: postgres-password
+          command: ["flyway", "migrate"]
+
+      containers:
+        - name: webapp
+          image: {{ .Values.webapp.image.repository }}
+          resources:
+            requests:
+              memory: {{ .Values.webapp.resources.requests.memory }}
+              cpu: {{ .Values.webapp.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.webapp.resources.limits.memory }}
+              cpu: {{ .Values.webapp.resources.limits.cpu }}
+          readinessProbe:
+              httpGet:
+                path: {{ .Values.webapp.readiness.probePath }}
+                port: {{ .Values.webapp.port }}
+              initialDelaySeconds: {{ .Values.probeReadinessInitialDelay }}
+              periodSeconds: {{ .Values.probePeriod }}
+          livenessProbe:
+              httpGet:
+                path: {{ .Values.webapp.liveness.probePath }}
+                port: {{ .Values.webapp.port }}
+              initialDelaySeconds: {{ .Values.probeLivenessInitialDelay }}
+              periodSeconds: {{ .Values.probePeriod }}
+          envFrom:
+            - configMapRef:
+                name: {{ tpl .Values.webappData.configMapName . }}
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                    name: {{ tpl .Values.webappData.secretName . }}
+                    key: postgres-password
+      imagePullSecrets:
+        - name: {{ tpl .Values.webappData.imagePullSecretName . }}
+
+  strategy:
+   type: {{ .Values.strategy.type }}
+   rollingUpdate:
+     maxUnavailable: {{ .Values.strategy.rollingUpdate.maxUnavailable }}
+     maxSurge: {{ .Values.strategy.rollingUpdate.maxSurge }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}

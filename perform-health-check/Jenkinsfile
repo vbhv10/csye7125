@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+
+    environment {
+
+        REGISTRY = 'quay.io/csye7125advcloud/perform-health-check'
+        BUILD_NUMBER = "${currentBuild.number}"
+        registryCredential = 'docker-registry-credentials'
+
+    }
+    stages {
+        stage('Checkout'){
+            steps {
+            //  Clean workspace so the clone is a fresh one
+                cleanWs()
+                checkout scm
+            }
+        }
+        stage('Building image') {
+            steps {
+                script {
+
+                    def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    echo "Using commit hash: ${commitHash}"
+                    env.COMMIT_HASH = commitHash
+
+                    def latestTag = sh(script: 'git describe --abbrev=0 --tags', returnStdout: true).trim()
+                    echo "Using release tag: ${latestTag}"
+                    env.LATEST_TAG = "${latestTag}-${COMMIT_HASH}"
+                    dockerImage = docker.build "${registry}:${LATEST_TAG}"
+                }
+            }
+        }
+        stage('Deploy image') {
+            steps{
+                script {
+                    docker.withRegistry( 'https://quay.io/', registryCredential ) {
+                    dockerImage.push()
+                    dockerImage.push("latest")
+
+                    }
+                }
+            }
+        }
+        stage('Cleaning up') {
+            steps{
+                // Remove the local Docker image
+                script {
+                    def imageId = sh(script: "docker images ${registry}:${LATEST_TAG} -q", returnStdout: true).trim()
+                    sh "docker rmi ${imageId} -f"
+                }
+            }
+        }
+    }
+}

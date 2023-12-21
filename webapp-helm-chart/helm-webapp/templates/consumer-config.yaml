@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ tpl .Values.kafkaData.configMapName . }}
+  namespace: {{ .Values.kafkaData.namespace }}
+data:
+  DB_HOST: {{ tpl .Values.kafkaData.dbHost . }}
+  DB_PORT: {{ .Values.kafkaData.dbPort | quote }}
+  DB_NAME: {{ .Values.kafkaData.dbName }}
+  DB_USER: {{ .Values.kafkaData.dbUser }}
+  DB_TABLE: {{ .Values.kafkaData.dbTable }}
+  KAFKA_TOPIC: {{ .Values.kafkaData.kafkaTopic }}
+  KAFKA_NAMESPACE: {{ .Values.kafkaData.kafkaNamespace }}
+  SECRET_NAME: {{ tpl .Values.kafkaData.secretName . }}
+  DB_NAMESPACE: {{ .Values.kafkaData.postgresNamespace }}
+  DEST_NAMESPACE: {{ .Values.kafkaData.namespace }}

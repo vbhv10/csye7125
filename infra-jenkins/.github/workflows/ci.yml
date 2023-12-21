@@ -1,0 +1,43 @@
+name: Terraform Format Check and Validate
+
+# Enable Buildkit and let compose use it to speed up image building
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  terraform-format:
+    name: Terraform format check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Check Terraform formatting
+      uses: dflook/terraform-fmt-check@v1
+      with:
+        path: terraform
+
+    
+  terraform-validate:
+    name: Terraform validation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Validate Terraform modules
+      uses: dflook/terraform-validate@v1
+      with:
+        path: terraform

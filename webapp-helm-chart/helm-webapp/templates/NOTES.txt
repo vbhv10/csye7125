@@ -1,0 +1,29 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Steps to run
+
+4. Login GCloud
+    $ gcloud auth login
+
+5. Configure kubectl to use the cluster in GKE
+    $ gcloud container clusters get-credentials webapp-gke --region=us-east1
+
+6. set the variables in the namespace
+    $ export CONSUMER_NAMESPACE=<name of consumer namespace>
+    $ WEBAPP_NAMESPACE=<name of webapp namespace>
+    $ RELEASE=<name of the release>
+    $ make deploy
+    $ make deploy_local for deploying the chart from local
+
+11. Delete the release with
+    $ helm delete <name of the release>
+
+12. Delete PVC with (PVC doesn't get deleted automatically)
+    $ kubectl get pvc
+    $ kubectl delete pvc <PVC_NAME>
+
+13. Additional commands helpful for debugging and linting
+    $ kubectl get pods
+    $ kubectl config view
+    $ helm lint <name of the release>
+    $ helm template <name of the release>

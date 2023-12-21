@@ -1,0 +1,80 @@
+name: CI-AMI
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Replace Secrets
+        run: |
+
+          
+              cd packer/jenkins
+        
+              JENKINS_ADMIN_ID="${{ secrets.JENKINS_ADMIN_ID }}"
+              JENKINS_ADMIN_PASSWORD="${{ secrets.JENKINS_ADMIN_PASSWORD }}"
+              GH_TOKEN="${{ secrets.TOKEN }}"
+              USERNAME="${{ secrets.USERNAME }}"
+              QUAY_ADMIN_ID="${{ secrets.QUAY_ADMIN_ID }}"
+              QUAY_PASSWORD="${{ secrets.QUAY_PASSWORD }}"
+
+              echo "Replacing secrets..."
+
+              cat <<EOL > .docker.env
+              JENKINS_ADMIN_ID="$JENKINS_ADMIN_ID"
+              JENKINS_ADMIN_PASSWORD="$JENKINS_ADMIN_PASSWORD"
+              GH_TOKEN="$TOKEN"
+              USERNAME="$USERNAME"
+              QUAY_ADMIN_ID="$QUAY_ADMIN_ID"
+              QUAY_PASSWORD="$QUAY_PASSWORD"
+              EOL
+              cat .docker.env
+
+        env:
+            ADMIN_ID: ${{ secrets.JENKINS_ADMIN_ID }}
+            ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
+            TOKEN: ${{ secrets.TOKEN }}
+            USERNAME: ${{ secrets.USERNAME }}
+            QUAY_ADMIN_ID: ${{ secrets.QUAY_ADMIN_ID }}
+            QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+
+
+
+
+      - name: Validate Packer Template
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: validate
+          arguments: -syntax-only
+          target: packer/ami.pkr.hcl
+        env:
+          PACKER_LOG: 1
+          ADMIN_ID: ${{ secrets.JENKINS_ADMIN_ID }}
+          ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
+          KEY: ${{ secrets.KEY }}
+          QUAY_ADMIN_ID: ${{ secrets.QUAY_ADMIN_ID }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Build Artifact packer AMI
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: build
+          arguments: "-color=false -on-error=abort"
+          target: packer/ami.pkr.hcl
+        env:
+          PACKER_LOG: 1
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ADMIN_ID: ${{ secrets.JENKINS_ADMIN_ID }}
+          ADMIN_PASSWORD: ${{ secrets.JENKINS_ADMIN_PASSWORD }}
+          KEY: ${{ secrets.KEY }}
+          QUAY_ADMIN_ID: ${{ secrets.QUAY_ADMIN_ID }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}

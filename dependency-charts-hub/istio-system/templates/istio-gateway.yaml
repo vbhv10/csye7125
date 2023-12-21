@@ -1,0 +1,21 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: {{ .Values.istio.gateway.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: {{ .Values.istio.gateway.appSelector }}
+  servers:
+  - port:
+      number: {{ .Values.istio.gateway.webappPort.portNumber }}
+      name: {{ .Values.istio.gateway.webappPort.portName }}
+      protocol: {{ .Values.istio.gateway.webappPort.portProtocol }}
+    hosts:
+    - {{ .Values.istio.gateway.webappHost }}
+  - port:
+      number: {{ .Values.istio.gateway.kialiPort.portNumber }}
+      name: {{ .Values.istio.gateway.kialiPort.portName }}
+      protocol: {{ .Values.istio.gateway.kialiPort.portProtocol }}
+    hosts:
+    - {{ .Values.istio.gateway.webappHost }}

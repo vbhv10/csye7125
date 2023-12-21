@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.webappData.networkPolicyName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.webappData.name }}
+  ingress:
+  - ports:
+      - protocol: TCP
+        port: 5432
+    from:
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Values.webappData.label }}
+  policyTypes:
+  - Ingress

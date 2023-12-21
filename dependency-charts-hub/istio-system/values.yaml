@@ -1,0 +1,14 @@
+istio:
+  gateway:
+    name: istio-gateway
+    appSelector: istio-ingress-release
+    webappPort:
+      portNumber: 8000
+      portName: tcp
+      portProtocol: TCP
+    kialiPort:
+      portNumber: 20001
+      portName: tcp1
+      portProtocol: TCP
+    namespace: istio-system
+    webappHost: ""

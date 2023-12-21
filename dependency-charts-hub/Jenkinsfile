@@ -1,0 +1,119 @@
+pipeline {
+    agent any
+
+    options{
+        skipDefaultCheckout(true)
+    }
+    environment {
+        // Define your environment variables here, if needed
+        CHART_NAME = 'helm-dependencies'
+        GITHUB_TOKEN = credentials('token-github')
+    }
+    stages {
+        stage('Checkout'){
+            steps {
+            //  Clean workspace so the clone is a fresh one
+                cleanWs()
+                checkout scm
+            }
+        }
+        stage('Build Chart and package') {
+            steps {
+                
+                // Use semantic-release to determine the chart version
+                script {
+
+                    // checkout to main branch
+                    sh "git checkout main"
+
+                    // get the version to create in lates push
+                    env.CHART_VERSION = sh(script: 'semantic-release version --no-commit --no-changelog --no-push --no-vcs-release --skip-build --print', returnStdout: true).trim()
+                    echo "New chart version: ${CHART_VERSION}"
+
+                    // Update the version in each Chart.yml
+                    sh "awk '/version:/ && !f { sub(/version:[[:space:]]*[^[:space:]]*/, \"version: ${CHART_VERSION}\"); f=1 } 1' consumer-postgres/Chart.yaml > tmpfile && mv tmpfile consumer-postgres/Chart.yaml"
+                    sh "cat consumer-postgres/Chart.yaml"
+
+                    sh "awk '/version:/ && !f { sub(/version:[[:space:]]*[^[:space:]]*/, \"version: ${CHART_VERSION}\"); f=1 } 1' webapp-postgres/Chart.yaml > tmpfile && mv tmpfile webapp-postgres/Chart.yaml"
+                    sh "cat webapp-postgres/Chart.yaml"
+
+                    sh "awk '/version:/ && !f { sub(/version:[[:space:]]*[^[:space:]]*/, \"version: ${CHART_VERSION}\"); f=1 } 1' kafka/Chart.yaml > tmpfile && mv tmpfile kafka/Chart.yaml"
+                    sh "cat kafka/Chart.yaml"
+
+                    sh "awk '/version:/ && !f { sub(/version:[[:space:]]*[^[:space:]]*/, \"version: ${CHART_VERSION}\"); f=1 } 1' istio-ingress/Chart.yaml > tmpfile && mv tmpfile istio-ingress/Chart.yaml"
+                    sh "cat istio-ingress/Chart.yaml"
+
+                    sh "awk '/version:/ && !f { sub(/version:[[:space:]]*[^[:space:]]*/, \"version: ${CHART_VERSION}\"); f=1 } 1' istio-system/Chart.yaml > tmpfile && mv tmpfile istio-system/Chart.yaml"
+                    sh "cat istio-system/Chart.yaml"
+
+                    sh "awk '/version:/ && !f { sub(/version:[[:space:]]*[^[:space:]]*/, \"version: ${CHART_VERSION}\"); f=1 } 1' dashboard/Chart.yaml > tmpfile && mv tmpfile dashboard/Chart.yaml"
+                    sh "cat dashboard/Chart.yaml"
+                }
+                
+                // Create a zip file
+                script{
+                    env.CHART_ZIP = "${CHART_NAME}-${CHART_VERSION}.zip"
+                    echo "Chart ZIP: ${CHART_ZIP}"
+
+                    sh "helm package consumer-postgres"
+                    sh "helm package webapp-postgres"
+                    sh "helm package kafka"
+                    sh "helm package istio-ingress"
+                    sh "helm package istio-system"
+                    sh "helm package dashboard"
+
+                    // Zip chart
+                    sh "zip -r ${CHART_ZIP} consumer-postgres-${CHART_VERSION}.tgz webapp-postgres-${CHART_VERSION}.tgz kafka-${CHART_VERSION}.tgz istio-ingress-${CHART_VERSION}.tgz istio-system-${CHART_VERSION}.tgz dashboard-${CHART_VERSION}.tgz"
+                }
+                
+            }
+        }
+        stage('Github-Release'){
+            steps{
+                script {
+
+                    // Get latest tag from the repository
+                    def releaseCheck = sh(
+                        script: "git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo '0.0.0'",
+                        returnStdout: true).trim()
+
+                    // Check if the release already existor create new one
+                    if (releaseCheck == "v${CHART_VERSION}") {
+                        echo "Release v${CHART_VERSION} already exists. Skipping release creation."
+                    } else {
+                        sh "gh release create v${CHART_VERSION} ${CHART_ZIP}"
+                        echo "Release v${CHART_VERSION} created."
+                    }
+                }
+            }
+        }
+
+        stage('Helm deploy'){
+            steps{
+                script {
+                    def data = readJSON text: "${googleApplicationCredentials}"
+                    def jsonContent = groovy.json.JsonOutput.toJson(data)
+
+                    writeFile file: "creds.json", text: "${jsonContent}"
+                    env.GOOGLE_CREDENTIALS = "creds.json"
+                    env.LOAD_BALANCER_IP = "${loadbalancerIP}"
+                    env.GATEWAY_HOST = "${gatewayHost}"
+
+                    // Authenticate with gcloud using service account credentials
+                    sh "gcloud auth login --cred-file=creds.json"
+
+                    // Set the project
+                    sh "gcloud config set project ${data.project_id}"
+
+                    // Get credentials for the GKE cluster
+                    sh "gcloud container clusters get-credentials ${clusterName} --region=us-east1"
+
+                    // Install the charts
+                    sh "make deploy"
+
+                }
+            }
+        }
+
+    }
+}

@@ -1,0 +1,12 @@
+apiVersion: webapp.vaibhavmahajan.in/v1
+kind: HealthCheck
+metadata:
+  labels:
+    app.kubernetes.io/name: healthcheck
+    app.kubernetes.io/instance: healthcheck-sample
+    app.kubernetes.io/part-of: health-check-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: health-check-operator
+  name: healthcheck-sample
+spec:
+  # TODO(user): Add fields here
